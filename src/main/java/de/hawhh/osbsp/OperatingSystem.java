@@ -4,6 +4,7 @@ import de.hawhh.osbsp.Process;
 import java.util.Collections;
 import java.util.Hashtable;
 import java.util.LinkedList;
+import java.util.Map;
 
 /**
  * Basisfunktionen eines 32-Bit Betriebssystems System Calls: createProcess,
@@ -77,30 +78,31 @@ public class OperatingSystem {
 
     // ------------ Hardware-Stubs --------------------------------------
     /**
-     * Physikalischer Hauptspeicher (Adresse, Datenwort)
+     * Physikalischer Hauptspeicher
      */
-    private Hashtable<Integer, Integer> physRAM;
+    private final byte[] physRAM;
 
     /**
      * Physikalische Festplatte (Adresse, Datenwort)
      */
-    private Hashtable<Integer, Integer> physDisk;
+    private final Map<Integer, Integer> physDisk;
 
     // ---------- Systemtabellen ----------------------------------------
     /**
      * Freibereichsliste Hauptspeicher
      */
-    private LinkedList<FreeListBlock> ramFreeList;
+    private final LinkedList<FreeListBlock> ramFreeList;
 
     /**
      * Freibereichsliste Festplatte
      */
-    private LinkedList<FreeListBlock> diskFreeList;
+    private final LinkedList<FreeListBlock> diskFreeList;
 
     /**
      * Liste aller Prozesse
      */
-    private LinkedList<Process> processTable;
+    private final LinkedList<Process> processTable;
+
     /**
      * Anzahl erzeugter Prozesse (fuer naechste freie PID)
      */
@@ -136,9 +138,9 @@ public class OperatingSystem {
      */
     public OperatingSystem() {
         // RAM initialisieren (Zugriffe erfolgen wortweise!)
-        physRAM = new Hashtable<Integer, Integer>(RAM_SIZE / WORD_SIZE);
+        physRAM = new byte[RAM_SIZE];
         // RAM - Freibereichsliste initialisieren
-        ramFreeList = new LinkedList<FreeListBlock>();
+        ramFreeList = new LinkedList<>();
         FreeListBlock ramFB = new FreeListBlock(0, RAM_SIZE);
         ramFreeList.add(ramFB);
 
@@ -150,7 +152,7 @@ public class OperatingSystem {
         diskFreeList.add(diskFB);
 
         // Prozessliste initialisieren
-        processTable = new LinkedList<Process>();
+        processTable = new LinkedList<>();
         processCounter = 0;
 
         // Statistische Protokollierung aktivieren
@@ -160,7 +162,7 @@ public class OperatingSystem {
     /**
      * Prozess-Objekt (Thread) erzeugen und in Prozessliste eintragen
      *
-     * @param die Größe des Prozess-Hauptspeicherbedarfs in Byte
+     * @param processSize Die Größe des Prozess-Hauptspeicherbedarfs in Byte
      *
      * @return die neue Prozess-ID oder -1, wenn Erzeugung nicht möglich
      * (Speichermangel)
@@ -226,7 +228,7 @@ public class OperatingSystem {
      * @return 0 wenn Schreiboperation erfolgreich oder -1 bei fehlerhafter
      * Adresse
      */
-    public synchronized int write(int pid, int virtAdr, int item) {
+    public synchronized int write(int pid, int virtAdr, byte item) {
         int virtualPageNum; // Virtuelle Seitennummer
         int offset; // Offset innerhalb der Seite
         int realAddressOfItem; // Reale Adresse des Datenworts
@@ -425,8 +427,8 @@ public class OperatingSystem {
      * @param ramAdr
      * @param item
      */
-    private void writeToRAM(int ramAdr, int item) {
-        physRAM.put(new Integer(ramAdr), new Integer(item));
+    private void writeToRAM(int ramAdr, byte item) {
+        physRAM[ramAdr] = item;
     }
 
     /**
@@ -436,17 +438,8 @@ public class OperatingSystem {
      * @return das item als positive Integerzahl oder -1, falls Adresse nicht
      * belegt
      */
-    private int readFromRAM(int ramAdr) {
-        Integer itemObject;
-        int result;
-
-        itemObject = (Integer) physRAM.get(new Integer(ramAdr));
-        if (itemObject == null) {
-            result = -1;
-        } else {
-            result = itemObject.intValue();
-        }
-        return result;
+    private byte readFromRAM(int ramAdr) {
+        return physRAM[ramAdr];
     }
 
     /**
@@ -522,7 +515,7 @@ public class OperatingSystem {
     /**
      * Lösche eine RAM-Seite und trage sie in die RAM-Freibereichsliste ein.
      * Wird hier nicht verwendet, da ein Prozess keinen Seitenrahmen wieder
-     * zur�ckgeben muss (keine dynamische Seitenzuteilung).
+     * zurückgeben muss (keine dynamische Seitenzuteilung).
      *
      * @param ramAdr
      */
@@ -538,9 +531,8 @@ public class OperatingSystem {
         FreeListBlock ramFB; // neuer FreeListBlock
 
         // RAM-Seite überschreiben
-        nullWord = new Integer(0);
         for (ri = ramAdr; ri < ramAdr + PAGE_SIZE; ri = ri + WORD_SIZE) {
-            physRAM.put(new Integer(ri), nullWord);
+            physRAM[ri] = 0;
         }
         // In Freibereichsliste eintragen
         ramFB = new FreeListBlock(ramAdr, PAGE_SIZE);

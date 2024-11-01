@@ -14,6 +14,8 @@ public class FreeListBlock implements Comparable<Object> {
     /**
      * Konstruktor
      *
+     * @param curAdr
+     * @param curSize
      */
     public FreeListBlock(int curAdr, int curSize) {
         adress = curAdr;
@@ -22,7 +24,10 @@ public class FreeListBlock implements Comparable<Object> {
 
     /**
      * Vergleichsfunktion für Sortierung
+     * @param otherBlock
+     * @return
      */
+    @Override
     public int compareTo(Object otherBlock) {
         // Vergleiche mit anderem FreeListBlock für die Sortierung
         return this.getAdress() - ((FreeListBlock) otherBlock).getAdress();
