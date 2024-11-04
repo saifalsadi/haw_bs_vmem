@@ -1,10 +1,14 @@
 package de.hawhh.osbsp;
 
 import de.hawhh.osbsp.Process;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.Collections;
 import java.util.Hashtable;
 import java.util.LinkedList;
-import java.util.Map;
+import java.util.Random;
 
 /**
  * Basisfunktionen eines 32-Bit Betriebssystems System Calls: createProcess,
@@ -85,7 +89,7 @@ public class OperatingSystem {
     /**
      * Physikalische Festplatte (Adresse, Datenwort)
      */
-    private final Map<Integer, Integer> physDisk;
+    private MappedByteBuffer physDisk;
 
     // ---------- Systemtabellen ----------------------------------------
     /**
@@ -158,6 +162,20 @@ public class OperatingSystem {
         // Statistische Protokollierung aktivieren
         eventLog = new Statistics();
     }
+    
+    /**
+     * Initialisiert die Auslagerungsdatei im Projektverzeichnis.
+     */
+    public void initPageFile() throws IOException {
+        try (var file = new RandomAccessFile("pagefile.bin", "rw")) {
+            file.setLength(DISK_SIZE); // Größe der Datei setzen
+            try (var channel = file.getChannel()) {
+                // Mappen der Datei auf einen ByteBuffer
+                physDisk = channel.map(FileChannel.MapMode.READ_WRITE, 0, DISK_SIZE);
+                // Channel und Datei können geschlossen werden, das Mapping bleibt
+            }
+        }
+    }
 
     /**
      * Prozess-Objekt (Thread) erzeugen und in Prozessliste eintragen
@@ -188,14 +206,12 @@ public class OperatingSystem {
     private void loadProcess(int pid, int processSize) {
         // Laden des Programmtextes und initialisieren der Datenbereiche
         // Speicherbelegung durch write - Operationen
-        int item; // Dummy
+        var rng = new Random();
 
         for (int virtAdr = 0; virtAdr < processSize; virtAdr = virtAdr
                 + getWORD_SIZE()) {
-            // Zu schreibendes Datenwort bestimmen
-            item = (int) (Math.pow(2, 31) * Math.random());
             // System Call
-            write(pid, virtAdr, item);
+            write(pid, virtAdr, (byte)(rng.nextInt() % 255));
         }
         System.out.println("Prozess " + pid + ": " + processSize + " Byte ("
                 + processSize / getPAGE_SIZE()
@@ -239,7 +255,7 @@ public class OperatingSystem {
         if ((virtAdr < 0) || (virtAdr > VIRT_ADR_SPACE - WORD_SIZE)) {
             System.err.println("OS: write ERROR " + pid + ": Adresse "
                     + virtAdr
-                    + " liegt au�erhalb des virtuellen Adressraums 0 - "
+                    + " liegt außerhalb des virtuellen Adressraums 0 - "
                     + VIRT_ADR_SPACE);
             return -1;
         }
@@ -451,13 +467,13 @@ public class OperatingSystem {
      */
     private void dataTransferToDisk(int ramAdr, int diskAdr) {
 
-        Integer currentWord; // aktuelles Speicherwort
+        byte currentByte; // aktuelles Speicherwort
         int ri; // aktuelle Speicherwortadresse im RAM
         int di; // aktuelle Speicherwortadresse auf der Platte
 
         di = diskAdr;
         for (ri = ramAdr; ri < ramAdr + PAGE_SIZE; ri = ri + WORD_SIZE) {
-            currentWord = (Integer) physRAM.get(new Integer(ri));
+            currentByte = physRAM[ri];
             physDisk.put(new Integer(di), currentWord);
             di = di + WORD_SIZE;
         }
