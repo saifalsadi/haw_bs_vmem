@@ -302,7 +302,7 @@ public class OperatingSystem {
                 + " geschrieben! RAM-Adresse: " + realAddressOfItem + " \n");
         // Seitentabelle bzgl. Zugriffshistorie aktualisieren
         pte.referenced = true;
-        // Statistische Z�hlung
+        // Statistische Zählung
         eventLog.incrementWriteAccesses();
         return 0;
     }
