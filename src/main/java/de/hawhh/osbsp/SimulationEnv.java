@@ -1,5 +1,7 @@
 package de.hawhh.osbsp;
 
+import java.io.IOException;
+
 /**
  * Simulation eines Hauptspeicherverwaltungssystems auf Basis eines "virtuellen
  * Speichers" mit Demand Paging, lokaler Seitenersetzungsstrategie und fester
@@ -27,8 +29,9 @@ public class SimulationEnv {
      * Main-Methode zum Start der Simulation
      *
      * @param args
+     * @throws java.io.IOException
      */
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         int pid; // Aktuelle Prozess-ID
 
         Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
@@ -62,7 +65,7 @@ public class SimulationEnv {
             // 256 Byte
             if (pid < 0) {
                 System.out
-                        .println("*********** Fehlerhafte Konfiguration: Zu wenig RAM f�r "
+                        .println("*********** Fehlerhafte Konfiguration: Zu wenig RAM für "
                                 + NUM_OF_PROCESSES + " Prozesse! *************");
                 break;
             }

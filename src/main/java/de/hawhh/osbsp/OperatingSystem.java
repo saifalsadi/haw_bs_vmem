@@ -6,7 +6,6 @@ import java.io.RandomAccessFile;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Collections;
-import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.Random;
 
@@ -139,8 +138,9 @@ public class OperatingSystem {
     // ------------------------- Public-Methoden ---------------------------
     /**
      * Konstruktor Operating System
+     * @throws java.io.IOException
      */
-    public OperatingSystem() {
+    public OperatingSystem() throws IOException {
         // RAM initialisieren (Zugriffe erfolgen wortweise!)
         physRAM = new byte[RAM_SIZE];
         // RAM - Freibereichsliste initialisieren
@@ -148,8 +148,8 @@ public class OperatingSystem {
         FreeListBlock ramFB = new FreeListBlock(0, RAM_SIZE);
         ramFreeList.add(ramFB);
 
-        // Platte initialisieren (Zugriffe erfolgen blockweise!))
-        physDisk = new Hashtable<Integer, Integer>(DISK_SIZE / BLOCK_SIZE);
+        // Platte initialisieren
+        initPageFile();
         // Platten - Freibereichsliste initialisieren
         diskFreeList = new LinkedList<FreeListBlock>();
         FreeListBlock diskFB = new FreeListBlock(0, DISK_SIZE);
@@ -165,8 +165,9 @@ public class OperatingSystem {
     
     /**
      * Initialisiert die Auslagerungsdatei im Projektverzeichnis.
+     * @throws IOException
      */
-    public void initPageFile() throws IOException {
+    private void initPageFile() throws IOException {
         try (var file = new RandomAccessFile("pagefile.bin", "rw")) {
             file.setLength(DISK_SIZE); // Größe der Datei setzen
             try (var channel = file.getChannel()) {
@@ -251,7 +252,7 @@ public class OperatingSystem {
         Process proc; // Aktuelles Prozessobjekt
         PageTableEntry pte; // Eintrag für die zu schreibende Seite
 
-        // �bergebene Adresse prüfen
+        // Übergebene Adresse prüfen
         if ((virtAdr < 0) || (virtAdr > VIRT_ADR_SPACE - WORD_SIZE)) {
             System.err.println("OS: write ERROR " + pid + ": Adresse "
                     + virtAdr
@@ -323,7 +324,7 @@ public class OperatingSystem {
     // ---------------------------------
     /**
      * @param pid
-     * @return Prozess-Objekt f�r die Prozess-ID
+     * @return Prozess-Objekt für die Prozess-ID
      */
     private Process getProcess(int pid) {
         return processTable.get(pid);
@@ -466,17 +467,11 @@ public class OperatingSystem {
      * @param diskAdr
      */
     private void dataTransferToDisk(int ramAdr, int diskAdr) {
-
-        byte currentByte; // aktuelles Speicherwort
-        int ri; // aktuelle Speicherwortadresse im RAM
-        int di; // aktuelle Speicherwortadresse auf der Platte
-
-        di = diskAdr;
-        for (ri = ramAdr; ri < ramAdr + PAGE_SIZE; ri = ri + WORD_SIZE) {
-            currentByte = physRAM[ri];
-            physDisk.put(new Integer(di), currentWord);
-            di = di + WORD_SIZE;
-        }
+        // Zur richtigen Position in der Datei springen
+        physDisk.position(diskAdr);
+        
+        // Page schreiben
+        physDisk.put(physRAM, ramAdr, PAGE_SIZE);
     }
 
     /**
@@ -487,16 +482,11 @@ public class OperatingSystem {
      * @param ramAdr
      */
     private void dataTransferFromDisk(int diskAdr, int ramAdr) {
-        Integer currentWord; // aktuelles Speicherwort
-        int ri; // aktuelle Speicherwortadresse im RAM
-        int di; // aktuelle Speicherwortadresse auf der Platte
-
-        ri = ramAdr;
-        for (di = diskAdr; di < diskAdr + BLOCK_SIZE; di = di + WORD_SIZE) {
-            currentWord = (Integer) physDisk.get(new Integer(di));
-            physRAM.put(new Integer(ri), currentWord);
-            ri = ri + WORD_SIZE;
-        }
+        // Zur richtigen Position in der Datei springen
+        physDisk.position(diskAdr);
+        
+        // Page schreiben
+        physDisk.get(physRAM, ramAdr, BLOCK_SIZE);
     }
 
     /**
@@ -611,10 +601,10 @@ public class OperatingSystem {
         FreeListBlock diskFB; // neuer FreeListBlock
 
         // Plattenblock überschreiben
-        nullWord = new Integer(0);
-        for (di = diskAdr; di < diskAdr + BLOCK_SIZE; di = di + WORD_SIZE) {
-            physDisk.put(new Integer(di), nullWord);
-        }
+        var nullPage = new byte[BLOCK_SIZE];
+        physDisk.position(diskAdr);
+        physDisk.put(nullPage);
+        
         // In Freibereichsliste eintragen
         diskFB = new FreeListBlock(diskAdr, BLOCK_SIZE);
         diskFreeList.add(diskFB);
