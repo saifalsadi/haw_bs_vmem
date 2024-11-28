@@ -125,33 +125,7 @@ public class PageTable {
      * ersetzen
      */
     private PageTableEntry clockAlgorithm(PageTableEntry newPte) {
-        PageTableEntry pte; // Aktuell untersuchter Seitentabelleneintrag
-
-        // Immer ab altem "Uhrzeigerstand" weitersuchen
-        pte = (PageTableEntry) pteRAMlist.get(pteRAMlistIndex);
-
-        // Suche den nächsten Eintrag mit referenced == false (R-Bit = 0)
-        while (pte.referenced == true) {
-            // Seite wurde referenziert, also nicht auswählen, sondern R-Bit
-            // zurücksetzen
-            os.testOut("Prozess " + pid + ": CLOCK-Algorithmus! --- pte.vpn: "
-                    + pte.virtPageNum + " ref: " + pte.referenced);
-            pte.referenced = false;
-            incrementPteRAMlistIndex();
-            pte = (PageTableEntry) pteRAMlist.get(pteRAMlistIndex);
-        }
-
-        // Seite ausgewählt! (--> pteRAMlistIndex)
-        // Alte Seite gegen neue in pteRAMlist austauschen
-        pteRAMlist.remove(pteRAMlistIndex);
-        pteRAMlist.add(pteRAMlistIndex, newPte);
-        // Index auf Nachfolger setzen
-        incrementPteRAMlistIndex();
-        os.testOut("Prozess " + pid
-                + ": CLOCK-Algorithmus hat pte ausgewählt: " + pte.virtPageNum
-                + "  Neuer pteRAMlistIndex ist " + pteRAMlistIndex);
-
-        return pte;
+        throw new RuntimeException("Nicht implementiert");
     }
 
     /**
