@@ -212,7 +212,7 @@ public class OperatingSystem {
         for (int virtAdr = 0; virtAdr < processSize; virtAdr = virtAdr
                 + getWORD_SIZE()) {
             // System Call
-            write(pid, virtAdr, (byte)(rng.nextInt() % 255));
+            write(pid, virtAdr, (byte)(rng.nextInt() % 255)); // hier wird Reference Bit auf true gesetzt
         }
         System.out.println("Prozess " + pid + ": " + processSize + " Byte ("
                 + processSize / getPAGE_SIZE()
@@ -267,12 +267,13 @@ public class OperatingSystem {
                 + " +++ Seitennr.: " + virtualPageNum + " Offset: " + offset);
 
         // Seite in Seitentabelle referenzieren
-        proc = getProcess(pid);
-        pte = proc.pageTable.getPte(virtualPageNum);
+        proc = getProcess(pid); // aus der Prozess-ID das Prozess-Objekt ausgeben.
+        pte = proc.pageTable.getPte(virtualPageNum); // aus dem Prozess Objekt die Seitentabellen Eintrag Objekt bekommen
         if (pte == null) {
             // Seite nicht vorhanden:
             testOut("OS: write " + pid + " +++ Seitennr.: " + virtualPageNum
                     + " in Seitentabelle nicht vorhanden");
+            // Hier wird ein neuer Tabellen Eintrag erstellt.
             pte = new PageTableEntry();
             pte.virtPageNum = virtualPageNum;
             // Seitenrahmen im RAM für die neue Seite anfordern und reale
@@ -291,12 +292,12 @@ public class OperatingSystem {
                 pte = handlePageFault(pte, pid);
             }
         }
-        // ------ Zustand: Seite ist in Seitentabelle und im RAM vorhanden
+        // ------ Zustand: Seite ist in Seitentabelle und im RAM vorhanden (also aktiv)
 
         // Reale Adresse des Datenworts berechnen
-        realAddressOfItem = pte.realPageFrameAdr + offset;
+        realAddressOfItem = pte.realPageFrameAdr + offset; // Reale Adresse =  realPageFrameAdr (Seitenrahmen * Seitengröße) + Offset
         // Datenwort in RAM eintragen
-        writeToRAM(realAddressOfItem, item);
+        writeToRAM(realAddressOfItem, item); // in die reale Adresse das Wort eintragen
         testOut("OS: write " + pid + " +++ item: " + item
                 + " erfolgreich an virt. Adresse " + virtAdr
                 + " geschrieben! RAM-Adresse: " + realAddressOfItem + " \n");
@@ -316,8 +317,53 @@ public class OperatingSystem {
      * Zugriffsfehler
      */
     public synchronized int read(int pid, int virtAdr) {
-        // ToDo
-        throw new RuntimeException("Nicht implementiert");
+        int virtualPageNum; // Virtuelle Seitennummer
+        int offset; // Offset innerhalb der Seite
+        int realAddressOfItem; // Reale Adresse des Datenworts
+        Process proc; // Aktuelles Prozessobjekt
+        PageTableEntry pte; // Eintrag für die zu schreibende Seite
+
+        // Übergebene Adresse prüfen
+        if ((virtAdr < 0) || (virtAdr > VIRT_ADR_SPACE - WORD_SIZE)) {
+            System.err.println("OS: write ERROR " + pid + ": Adresse "
+                    + virtAdr
+                    + " liegt außerhalb des virtuellen Adressraums 0 - "
+                    + VIRT_ADR_SPACE);
+            return -1;
+        }
+        // Seitenadresse berechnen
+        virtualPageNum = getVirtualPageNum(virtAdr);
+        offset = getOffset(virtAdr);
+        testOut("OS: write " + pid + " " + virtAdr + " "
+                + " +++ Seitennr.: " + virtualPageNum + " Offset: " + offset);
+
+        // Seite in Seitentabelle referenzieren
+        proc = getProcess(pid); // aus der Prozess-ID das Prozess-Objekt ausgeben.
+        pte = proc.pageTable.getPte(virtualPageNum); // aus dem Prozess Objekt die Seitentabellen Eintrag Objekt bekommen
+        if (pte == null) {
+            // Seite nicht vorhanden:
+            testOut("OS: write " + pid + " +++ Seitennr.: " + virtualPageNum
+                    + " in Seitentabelle nicht vorhanden");
+        } else {
+            // Seite vorhanden: Seite valid (im RAM)?
+            if (!pte.valid) {
+                // Seite nicht valid (also auf Platte --> Seitenfehler):
+                pte = handlePageFault(pte, pid);
+            }
+        }
+        // ------ Zustand: Seite ist in Seitentabelle und im RAM vorhanden (also aktiv)
+
+        // Reale Adresse des Datenworts berechnen
+        realAddressOfItem = pte.realPageFrameAdr + offset; // Reale Adresse =  realPageFrameAdr (Seitenrahmen * Seitengröße) + Offset
+        testOut("OS: write " + pid + " +++ item: " + readFromRAM(realAddressOfItem)
+                + " erfolgreich von virt. Adresse " + virtAdr
+                + " gelesen! RAM-Adresse: " + realAddressOfItem + " \n");
+        // Seitentabelle bzgl. Zugriffshistorie aktualisieren
+        pte.referenced = true;
+        // Statistische Zählung
+        eventLog.incrementReadAccesses();
+        return readFromRAM(realAddressOfItem);
+
     }
 
     // --------------- Private Methoden des Betriebssystems
@@ -335,8 +381,8 @@ public class OperatingSystem {
      * @return Die entsprechende virtuelle Seitennummer
      */
     private int getVirtualPageNum(int virtAdr) {
-        // ToDo
-        throw new RuntimeException("Nicht implementiert");
+        return virtAdr / getPAGE_SIZE();
+        //throw new RuntimeException("Nicht implementiert");
     }
 
     /**
@@ -344,8 +390,8 @@ public class OperatingSystem {
      * @return Den entsprechenden Offset zur Berechnung der realen Adresse
      */
     private int getOffset(int virtAdr) {
-        // ToDo
-        throw new RuntimeException("Nicht implementiert");
+        return virtAdr % getPAGE_SIZE();
+        //throw new RuntimeException("Nicht implementiert");
     }
 
     /**

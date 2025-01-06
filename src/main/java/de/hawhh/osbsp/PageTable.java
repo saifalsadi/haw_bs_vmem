@@ -2,6 +2,7 @@ package de.hawhh.osbsp;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.Random;
 
 /**
  * Eine Seitentabelle eines Prozesses, implementiert als ArrayList von
@@ -19,7 +20,7 @@ public class PageTable {
     /**
      * Liste aller Seiten, die sich im RAM befinden
      */
-    private LinkedList<PageTableEntry> pteRAMlist;
+    private LinkedList<PageTableEntry> pteRAMlist; // sortiert
 
     /**
      * Uhrzeiger für Clock-Algorithmus
@@ -35,6 +36,7 @@ public class PageTable {
      * Prozess-ID des eigenen Prozesses
      */
     private int pid;
+
 
     /**
      * Konstruktor
@@ -125,16 +127,43 @@ public class PageTable {
      * ersetzen
      */
     private PageTableEntry clockAlgorithm(PageTableEntry newPte) {
-        throw new RuntimeException("Nicht implementiert");
+        while (true) {
+            // nehme aktuellen PTE
+            PageTableEntry aktuellerPte = pteRAMlist.get(pteRAMlistIndex);
+
+            // Falls R-Bit = 1, setze ihn auf 0
+            if (aktuellerPte.referenced) {
+                aktuellerPte.referenced = false;
+                // Falls R-Bit = 0, ersetze ihn durch den neuen Pte
+            } else {
+                PageTableEntry pte = aktuellerPte;
+                os.testOut("Prozess " + pid + ": CLOCK-Algorithmus hat pte ausgewählt: "
+                        + pte.virtPageNum);
+                pteRAMlist.set(pteRAMlistIndex, newPte);
+                incrementPteRAMlistIndex();
+                return pte;
+            }
+
+            // Bewege den Zeiger zyklisch weiter, falls R-Bit = 1
+            incrementPteRAMlistIndex();
+        }
+
+
     }
 
     /**
      * RANDOM-Algorithmus: Zufällige Auswahl
      */
     private PageTableEntry randomAlgorithm(PageTableEntry newPte) {
-        // ToDo
-        throw new RuntimeException("Nicht implementiert");
-        //return pte;
+        PageTableEntry pte; // Auswahl
+        int randomPteIndex = new Random().nextInt(pteRAMlist.size() - 1);
+        pte = (PageTableEntry) pteRAMlist.get(randomPteIndex);
+
+        os.testOut("Prozess " + pid + ": RANDOM-Algorithmus hat pte ausgewählt: "
+                + pte.virtPageNum);
+        pteRAMlist.set(randomPteIndex, newPte);
+        return pte;
+        // throw new RuntimeException("Nicht implementiert");
     }
 
     // ----------------------- Hilfsmethode --------------------------------

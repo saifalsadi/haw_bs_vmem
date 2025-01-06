@@ -44,12 +44,12 @@ public class SimulationEnv {
         // ------------------------- Parameter setzen
         // ------------------------------------------
         // Dauer der Simulation in ms
-        simulationTime = 200;
+        simulationTime = 15;
         // max. Anzahl Seiten pro Prozess im Hauptspeicher (sonst Verdr�ngung
         // eigener Seiten)
         os.setMAX_RAM_PAGES_PER_PROCESS(10);
         // CLOCK oder FIFO oder RANDOM
-        os.setREPLACEMENT_ALGORITHM(OperatingSystem.ImplementedReplacementAlgorithms.FIFO);
+        os.setREPLACEMENT_ALGORITHM(OperatingSystem.ImplementedReplacementAlgorithms.CLOCK);
         // Anzahl Operationen innerhalb eines Seitenbereichs
         os.setDEFAULT_LOCALITY_FACTOR(1);
 
@@ -61,7 +61,7 @@ public class SimulationEnv {
         // -----------------------------------------------
         // Erzeugen von unabhängigen Prozessen
         for (int i = 0; i < NUM_OF_PROCESSES; i++) {
-            pid = os.createProcess(5120); // 20 Seiten bei einer Seitengröße von
+            pid = os.createProcess(5120); // 20 Seiten bei einer Seitengröße von 5210 / 256
             // 256 Byte
             if (pid < 0) {
                 System.out
