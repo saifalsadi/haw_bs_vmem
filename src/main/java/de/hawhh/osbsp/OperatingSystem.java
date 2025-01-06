@@ -344,6 +344,18 @@ public class OperatingSystem {
             // Seite nicht vorhanden:
             testOut("OS: write " + pid + " +++ Seitennr.: " + virtualPageNum
                     + " in Seitentabelle nicht vorhanden");
+            // Hier wird ein neuer Tabellen Eintrag erstellt.
+            pte = new PageTableEntry();
+            pte.virtPageNum = virtualPageNum;
+            // Seitenrahmen im RAM für die neue Seite anfordern und reale
+            // (RAM-)SeitenAdresse eintragen
+            pte.realPageFrameAdr = getNewRAMPage(pte, pid);
+            pte.valid = true;
+            // neue Seite in Seitentabelle eintragen
+            proc.pageTable.addEntry(pte);
+            testOut("OS: write " + pid + " Neue Seite " + virtualPageNum
+                    + " in Seitentabelle eingetragen! RAM-Adr.: "
+                    + pte.realPageFrameAdr);
         } else {
             // Seite vorhanden: Seite valid (im RAM)?
             if (!pte.valid) {
